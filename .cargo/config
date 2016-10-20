@@ -1,0 +1,8 @@
+
+[registry]
+token = "u9B5a0IOhIQM5MS3HQQ8FLssbPPMvgqz"
+
+[source]
+
+[source.mirror]
+registry = "https://github.com/rust-lang/crates.io-index"

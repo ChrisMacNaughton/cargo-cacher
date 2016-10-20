@@ -1,0 +1,13 @@
+[package]
+name = "cargo-cacher"
+version = "0.1.0"
+authors = ["Chris MacNaughton <chmacnaughton@gmail.com>"]
+
+[dependencies]
+chrono = "*"
+clap = "*"
+iron = "*"
+log = "*"
+logger = "*"
+router = "*"
+simple_logger = "*"
