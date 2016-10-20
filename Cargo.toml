@@ -2,7 +2,11 @@
 name = "cargo-cacher"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
+description = "cargo-cacher is a crates.io proxy that will proxy requests made when building a package with Cargo"
 authors = ["Chris MacNaughton <chmacnaughton@gmail.com>"]
+homepage = "https://github.com/ChrisMacNaughton/cargo-cacher"
+documentation = "https://docs.rs/cargo-cacher"
+repository = "https://github.com/ChrisMacNaughton/cargo-cacher.git"
 
 [dependencies]
 chrono = "*"
