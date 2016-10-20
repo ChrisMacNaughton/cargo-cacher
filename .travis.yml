@@ -1,4 +1,12 @@
 language: rust
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libudev-dev
+      - libdw-dev
+      - binutils-dev # optional: only required for the --verify flag of coveralls
 rust:
   - stable
   - beta
