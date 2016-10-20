@@ -5,8 +5,6 @@ use std::process::Command;
 use std::thread::{self, sleep};
 use std::time::Duration;
 
-use chrono::Local;
-
 pub fn init_sync(git_path: PathBuf, index_path: String, port: u16, interval: Duration) {
     git_sync(&git_path, &index_path, port);
     thread::spawn(move || loop {
@@ -60,13 +58,11 @@ fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
     }
     if let Some(status) = status {
         if status.success() {
-            trace!("Successfully synced at {}",
-                   Local::now().format("%Y-%m-%dT%H:%M:%S"));
+            trace!("Successfully synced");
             return;
         } else {
             warn!("Command was not a success");
         }
     }
-    warn!("Failed to update index at {}",
-          Local::now().format("%Y-%m-%dT%H:%M:%S"));
+    warn!("Failed to update index");
 }
