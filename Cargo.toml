@@ -1,6 +1,7 @@
 [package]
 name = "cargo-cacher"
 version = "0.1.0"
+license = "MIT OR Apache-2.0"
 authors = ["Chris MacNaughton <chmacnaughton@gmail.com>"]
 
 [dependencies]
