@@ -7,20 +7,18 @@ use std::time::Duration;
 
 use chrono::Local;
 
-const INDEX_PATH: &'static str = "https://github.com/rust-lang/crates.io-index.git";
-
-pub fn init_sync(git_path: PathBuf, port: u16, interval: Duration) {
-    git_sync(&git_path, port);
+pub fn init_sync(git_path: PathBuf, index_path: String, port: u16, interval: Duration) {
+    git_sync(&git_path, &index_path, port);
     thread::spawn(move || loop {
         sleep(interval);
-        git_sync(&git_path, port);
+        git_sync(&git_path, &index_path, port);
     });
 }
 
-fn git_sync(git_path: &PathBuf, port: u16) {
+fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
     debug!("Syncing git repo at {} with {}",
            git_path.to_str().unwrap(),
-           INDEX_PATH);
+           index_path);
     let mut repo_path = git_path.clone();
     repo_path.push(".git");
     let status = if repo_path.exists() {
@@ -39,7 +37,7 @@ fn git_sync(git_path: &PathBuf, port: u16) {
         match Command::new("git")
             .arg("clone")
             .arg("-qq")
-            .arg(&INDEX_PATH)
+            .arg(index_path)
             .arg(&git_path)
             .current_dir(git_path)
             .status() {

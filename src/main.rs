@@ -30,6 +30,7 @@ use router::Router;
 struct Config {
     index_path: String,
     upstream: String,
+    index: String,
     port: u16,
     refresh_rate: u64,
     /// hours to keep the files around
@@ -46,6 +47,12 @@ fn main() {
             .short("d")
             .multiple(true)
             .help("Sets the level of debugging information"))
+        .arg(Arg::with_name("git")
+            .short("g")
+            .required(false)
+            .takes_value(true)
+            .help("Upstream git index (Default: \
+                   https://github.com/rust-lang/crates.io-index.git)"))
         .arg(Arg::with_name("index")
             .short("i")
             .required(false)
@@ -82,6 +89,9 @@ fn main() {
     let config = Config {
         index_path: matches.value_of("index").unwrap_or("./index").into(),
         upstream: matches.value_of("upstream").unwrap_or("https://crates.io/api/v1/crates/").into(),
+        index: matches.value_of("git")
+            .unwrap_or("https://github.com/rust-lang/crates.io-index.git")
+            .into(),
         port: u16::from_str(matches.value_of("port")
                 .unwrap_or("8080"))
             .unwrap_or(8080),
@@ -103,6 +113,7 @@ fn main() {
     let mut git_index: String = config.index_path.clone();
     git_index.push_str("/index");
     index_sync::init_sync(PathBuf::from(git_index),
+                          config.index.clone(),
                           config.port,
                           Duration::from_secs(config.refresh_rate));
 
