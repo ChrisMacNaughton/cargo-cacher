@@ -25,3 +25,4 @@ Once this is in place, your builds will go through the local proxy, and the crat
 
 - Add expiration on background thread
 - Add statistics
+- Remote git server
