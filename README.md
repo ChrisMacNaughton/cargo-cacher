@@ -12,14 +12,14 @@ To configure your system to use a copy of cargo-cacher, you need to setup a .car
 [source]
 
 [source.mirror]
-registry = "file:///configured/path/to/index"
+registry = "http://localhost:8080/index"
 
 [source.crates-io]
 replace-with = "mirror"
 registry = "https://doesnt-matter-but-must-be-present"
 ```
 
-Once this is in place, your builds will go through the local proxy, and the crates will be pulled down to the local filesystem when they are first requested.
+Once this is in place, your builds will go through the local proxy, and the crates will be pulled down to the local filesystem when they are first requested. The path can be a remote hosst as long as the path is to /index.
 
 ## TODO
 
