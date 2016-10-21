@@ -1,6 +1,6 @@
 [root]
 name = "cargo-cacher"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "clap 2.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "iron 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",

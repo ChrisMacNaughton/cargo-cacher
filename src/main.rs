@@ -156,7 +156,7 @@ fn main() {
     chain.link_before(logger_before);
     chain.link_after(logger_after);
 
-    info!("Listening on {}", host);
+    println!("Listening on {}", host);
     // Iron::new(chain).http(host).unwrap();
     Iron::new(chain).http(&host[..]).unwrap();
 }

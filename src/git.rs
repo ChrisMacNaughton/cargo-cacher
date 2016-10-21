@@ -31,9 +31,6 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
         }
         _ => "".into(),
     };
-    info!("Content-Type is {:?}", content_type);
-    // let content_type = "";
-    println!("inc headers: {:?}", req.headers);
 
     let path_info = if req.url.path().join("/").starts_with("/") {
         req.url.path().join("/").to_string()
@@ -43,10 +40,6 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
     let method = format!("{:?}", req.method).to_ascii_uppercase();
     let query_string = req.url.query().unwrap_or("");
     let remote_addr = req.remote_addr.to_string();
-    debug!("Path Info: {}", path_info);
-    debug!("Method: {:?}", method);
-    debug!("Query String: {}", query_string);
-    debug!("Remote Addr: {}", remote_addr);
     let mut cmd = Command::new("git");
     cmd.arg("http-backend");
     // Required environment variables
@@ -94,21 +87,9 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
             .push(value.to_string());
     }
 
-    let (status_code, status_desc) = {
-        let line = headers.remove("Status").unwrap_or(Vec::new());
-        let line = line.into_iter().next().unwrap_or(String::new());
-        let mut parts = line.splitn(1, ' ');
-        (parts.next().unwrap_or("").parse().unwrap_or(200),
-         match parts.next() {
-            Some("Not Found") => "Not Found",
-            _ => "Ok",
-        })
-    };
-    info!("code: {}, Desc: {}", status_code, status_desc);
-    info!("out headers: {:?}", headers);
     let mut buf = Vec::new();
     let _ = rdr.read_to_end(&mut buf);
-    // debug!("STDOUT: {:?}", String::from_utf8_lossy(&buf));
+
     let content_type = headers.get("Content-Type")
         .unwrap_or(&vec![])
         .first()

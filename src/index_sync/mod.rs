@@ -1,7 +1,7 @@
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::thread::{self, sleep};
 use std::time::Duration;
 
@@ -25,6 +25,8 @@ fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
             .arg("pull")
             .arg("-q")
             .arg("--rebase")
+            .stderr(Stdio::null())
+            .stdout(Stdio::null())
             .current_dir(git_path)
             .status() {
             Ok(s) => Some(s),
@@ -40,8 +42,21 @@ fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
             .arg(index_path)
             .arg(&git_path)
             .current_dir(git_path)
+            .stderr(Stdio::null())
+            .stdout(Stdio::null())
             .status() {
-            Ok(s) => Some(s),
+            Ok(s) => {
+                Command::new("git")
+                    .arg("config")
+                    .arg("commit.gpgsign")
+                    .arg("false")
+                    .stderr(Stdio::null())
+                    .stdout(Stdio::null())
+                    .current_dir(git_path)
+                    .status()
+                    .unwrap();
+                Some(s)
+            }
             Err(_) => return,
         }
     };
@@ -61,6 +76,8 @@ fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
             .arg("-a")
             .arg("-m 'Updating config.json'")
             .arg("--no-gpg-sign")
+            .stderr(Stdio::null())
+            .stdout(Stdio::null())
             .current_dir(git_path)
             .status()
             .unwrap();
