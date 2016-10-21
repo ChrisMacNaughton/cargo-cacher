@@ -54,4 +54,3 @@ The above input will fetch log version 0.3.6 and libc version 0.1.12 before bein
 
 - Add expiration on background thread
 - Add statistics
-- Remote git server
