@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate clap;
+extern crate flate2;
+#[macro_use]
 extern crate iron;
 #[macro_use]
 extern crate log;
@@ -14,6 +16,7 @@ use std::process::Command;
 use std::str::FromStr;
 
 mod index_sync;
+mod git;
 
 use clap::{Arg, App};
 
@@ -25,8 +28,8 @@ use logger::Logger;
 
 use router::Router;
 
-#[derive(Debug)]
-struct Config {
+#[derive(Clone, Debug)]
+pub struct Config {
     index_path: String,
     upstream: String,
     index: String,
@@ -112,7 +115,7 @@ fn main() {
     let mut git_index: String = config.index_path.clone();
     git_index.push_str("/index");
     index_sync::init_sync(PathBuf::from(git_index),
-                          config.index.clone(),
+                          &config.index,
                           config.port,
                           Duration::from_secs(config.refresh_rate));
 
@@ -121,9 +124,31 @@ fn main() {
     let host = format!("0.0.0.0:{}", config.port);
 
     let router = router!(
-        download: get "api/v1/crates/:crate_name/:crate_version/download" =>
-             move |request: &mut Request|
-                fetch_download(request, &config),
+        download: get "api/v1/crates/:crate_name/:crate_version/download" => {
+            let config = config.clone();
+            move |request: &mut Request|
+                fetch_download(request, &config.clone())
+        },
+        head: get "index/*" => {
+            let config = config.clone();
+            move |request: &mut Request|
+                git::git(request, &config.clone())
+        },
+        index: get "index/**/*" => {
+            let config = config.clone();
+            move |request: &mut Request|
+                git::git(request, &config.clone())
+        },
+        head: post "index/*" => {
+            let config = config.clone();
+            move |request: &mut Request|
+                git::git(request, &config.clone())
+        },
+        index: post "index/**/*" => {
+            let config = config.clone();
+            move |request: &mut Request|
+                git::git(request, &config.clone())
+        },
         root: any "/" => log,
         query: any "/*" => log,
     );
@@ -138,7 +163,7 @@ fn main() {
 }
 
 pub fn log(req: &mut Request) -> IronResult<Response> {
-    info!("{:?}", req);
+    info!("Whoops! {:?}", req);
     Ok(Response::with((status::Ok, "Ok")))
 }
 
@@ -189,23 +214,3 @@ fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
 
     // Ok(Response::with((status::Ok, "Ok")))
 }
-
-// fn fetch_download(index_path: &String) -> (FnMut(&mut Request) -> IronResult<Response>) {
-//     // fn fetch_download(index_path: &String) -> (|&mut Request|:'a -> IronResult<Response>) {
-//     |req: &mut Request| {
-//         let ref crate_name = req.extensions
-//             .get::<Router>()
-//             .unwrap()
-//             .find("crate_name")
-//             .unwrap();
-//         let ref crate_version = req.extensions
-//             .get::<Router>()
-//             .unwrap()
-//             .find("crate_version")
-//             .unwrap();
-//         debug!("Downloading: {}:{}", crate_name, crate_version);
-//         trace!("Raw request: {:?}", req);
-
-//         Ok(Response::with((status::Ok, "Ok")))
-//     }
-// }

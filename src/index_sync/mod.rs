@@ -5,7 +5,8 @@ use std::process::Command;
 use std::thread::{self, sleep};
 use std::time::Duration;
 
-pub fn init_sync(git_path: PathBuf, index_path: String, port: u16, interval: Duration) {
+pub fn init_sync(git_path: PathBuf, index_path: &String, port: u16, interval: Duration) {
+    let index_path = index_path.clone();
     git_sync(&git_path, &index_path, port);
     thread::spawn(move || loop {
         sleep(interval);
@@ -23,6 +24,7 @@ fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
         match Command::new("git")
             .arg("pull")
             .arg("-q")
+            .arg("--rebase")
             .current_dir(git_path)
             .status() {
             Ok(s) => Some(s),
@@ -53,6 +55,19 @@ fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
 ",
                              port);
         let _ = f.write(&config.as_bytes());
+        Command::new("git")
+            .arg("commit")
+            .arg("-q")
+            .arg("-a")
+            .arg("-m 'Updating config.json'")
+            .arg("--no-gpg-sign")
+            .current_dir(git_path)
+            .status()
+            .unwrap();
+        let mut export = git_path.clone();
+        export.push(".git");
+        export.push("git-daemon-export-ok");
+        let _ = File::create(export);
     } else {
         warn!("\tHad a problem modifying the config.json")
     }
