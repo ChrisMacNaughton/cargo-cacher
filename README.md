@@ -19,7 +19,36 @@ replace-with = "mirror"
 registry = "https://doesnt-matter-but-must-be-present"
 ```
 
-Once this is in place, your builds will go through the local proxy, and the crates will be pulled down to the local filesystem when they are first requested. The path can be a remote hosst as long as the path is to /index.
+Once this is in place, your builds will go through the local proxy, and the crates will be pulled down to the local filesystem when they are first requested. The path can be a remote hosst as long as the path is to /index. To run cargo-cacher, there are several arguments you probably want to use:
+
+```
+USAGE:
+    cargo-cacher [FLAGS] [OPTIONS]
+
+FLAGS:
+    -d               Sets the level of debugging information
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -g <git>             Upstream git index (Default: https://github.com/rust-lang/crates.io-index.git)
+    -i <index>           Path to store the indexes (git and fiels) at (Default: ./index)
+    -p <port>            Output file to put compiled crushmap into (Default: 8080)
+    -f <prefetch>        Path with a list of crate_name=version to pre-fetch
+    -r <refresh>         Refresh rate for the git index (Default: 600)
+    -t <timeout>         How long, in hours, to keep cached crates around (Default: 168 / 7 days)
+    -u <upstream>        Upstream Crate source (Default: https://crates.io/api/v1/crates/)
+
+```
+
+Prefetch is an option that I feel deserves further attention. Prefetch is a path to a file containing one line per crate/version, example:
+
+```
+log=0.3.6
+libc=0.1.12
+```
+
+The above input will fetch log version 0.3.6 and libc version 0.1.12 before being requested by a user. This happens on a separate thread so the server can continue to start up without waiting on the pre-fetching to complete.
 
 ## TODO
 

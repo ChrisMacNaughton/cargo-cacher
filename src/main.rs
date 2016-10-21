@@ -9,10 +9,14 @@ extern crate logger;
 extern crate router;
 extern crate simple_logger;
 
+use std::fs::File;
+use std::io::prelude::*;
+use std::io;
 use std::time::Duration;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, ExitStatus};
 use std::str::FromStr;
+use std::thread;
 
 mod index_sync;
 mod git;
@@ -79,6 +83,11 @@ fn main() {
             .required(false)
             .takes_value(true)
             .help("How long, in hours, to keep cached crates around (Default: 168 / 7 days)"))
+        .arg(Arg::with_name("prefetch")
+            .short("f")
+            .takes_value(true)
+            .required(false)
+            .help("Path with a list of crate_name=version to pre-fetch"))
         .get_matches();
 
     let log_level = match matches.occurrences_of("debug") {
@@ -117,6 +126,10 @@ fn main() {
                           &config.index,
                           config.port,
                           Duration::from_secs(config.refresh_rate));
+    if let Some(prefetch) = matches.value_of("prefetch").map(|r| r.to_string()) {
+        let config = config.clone();
+        pre_fetch(prefetch, config);
+    }
 
     // web server to handle DL requests
 
@@ -188,20 +201,12 @@ fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
         Ok(Response::with((status::Ok, path)))
     } else {
         debug!("path {:?} doesn't exist!", path);
-        info!("Fetching {}(v: {})", crate_name, crate_version);
-        let url = format!("{}/{}/{}/download",
-                          config.upstream,
-                          crate_name,
-                          crate_version);
-        let _ = std::fs::create_dir_all(PathBuf::from(format!("{}/crates/{}",
-                                                              config.index_path,
-                                                              crate_name)));
-        match Command::new("curl").arg("-o").arg(&path) // Save to disk
-                         .arg("-L") // Follow redirects
-                         .arg("-s") // Quietly!
-                         // .current_dir(path)
-                         .arg(url)
-                         .status() {
+
+        match fetch(&path,
+                    &config.upstream,
+                    &config.index_path,
+                    &crate_name,
+                    &crate_version) {
             Ok(_) => Ok(Response::with((status::Ok, path))),
             Err(e) => {
                 error!("{:?}", e);
@@ -212,4 +217,50 @@ fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
     }
 
     // Ok(Response::with((status::Ok, "Ok")))
+}
+
+fn fetch(path: &PathBuf,
+         upstream: &str,
+         index_path: &str,
+         crate_name: &str,
+         crate_version: &str)
+         -> Result<ExitStatus, io::Error> {
+    info!("Fetching {}(v: {})", crate_name, crate_version);
+    let url = format!("{}/{}/{}/download", upstream, crate_name, crate_version);
+    let _ = std::fs::create_dir_all(PathBuf::from(format!("{}/crates/{}", index_path, crate_name)));
+    Command::new("curl").arg("-o").arg(&path) // Save to disk
+                         .arg("-L") // Follow redirects
+                         .arg("-s") // Quietly!
+                         // .current_dir(path)
+                         .arg(url)
+                         .status()
+}
+
+fn pre_fetch(prefetch_path: String, config: Config) {
+    thread::spawn(move || {
+        debug!("Prefetching file at {}!", prefetch_path);
+        if let Ok(f) = File::open(prefetch_path) {
+            let reader = io::BufReader::new(f);
+            for line in reader.lines().filter(|l| l.is_ok()).map(|l| l.unwrap()) {
+                let mut split = line.split("=");
+                if let Some(crate_name) = split.next() {
+                    if let Some(crate_version) = split.next() {
+                        let path = PathBuf::from(format!("{}/crates/{}/{}",
+                                                         config.index_path,
+                                                         crate_name,
+                                                         crate_version));
+                        if path.exists() {
+                            debug!("{}:{} is already fetched", crate_name, crate_version);
+                        } else {
+                            let _ = fetch(&path,
+                                          &config.upstream,
+                                          &config.index_path,
+                                          &crate_name,
+                                          &crate_version);
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
