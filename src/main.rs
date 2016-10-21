@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate clap;
-extern crate flate2;
 #[macro_use]
 extern crate iron;
 #[macro_use]

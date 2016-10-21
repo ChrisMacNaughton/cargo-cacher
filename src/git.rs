@@ -1,19 +1,16 @@
-
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::io::prelude::*;
 use std::io;
-use std::process::{Command, Child, Stdio};
+use std::process::{Command, Stdio};
 
-use flate2::read::GzDecoder;
 use iron::headers::ContentType;
 
 // Iron Stuff
 use iron::status::{self, Status};
 use iron::prelude::*;
-use iron::Error;
 
-use iron::mime::{Mime, TopLevel, SubLevel, Attr, Value};
+use iron::mime::{Mime, TopLevel, SubLevel};
 
 use Config;
 
@@ -66,10 +63,10 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
         .stdin(Stdio::piped());
     let mut p = match cmd.spawn() {
         Ok(s) => s,
-        Err(e) => return Ok(Response::with((status::InternalServerError, "Failed to run git"))),
+        Err(_) => return Ok(Response::with((status::InternalServerError, "Failed to run git"))),
     };
 
-    io::copy(&mut req.body, &mut p.stdin.take().unwrap());
+    let _ = io::copy(&mut req.body, &mut p.stdin.take().unwrap());
 
     // Parse the headers coming out, and the pass through the rest of the
     // process back down the stack.
@@ -110,7 +107,7 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
     info!("code: {}, Desc: {}", status_code, status_desc);
     info!("out headers: {:?}", headers);
     let mut buf = Vec::new();
-    rdr.read_to_end(&mut buf);
+    let _ = rdr.read_to_end(&mut buf);
     // debug!("STDOUT: {:?}", String::from_utf8_lossy(&buf));
     let content_type = headers.get("Content-Type")
         .unwrap_or(&vec![])
