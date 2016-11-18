@@ -16,7 +16,6 @@ registry = "http://localhost:8080/index"
 
 [source.crates-io]
 replace-with = "mirror"
-registry = "https://doesnt-matter-but-must-be-present"
 ```
 
 Once this is in place, your builds will go through the local proxy, and the crates will be pulled down to the local filesystem when they are first requested. The path can be a remote hosst as long as the path is to /index. To run cargo-cacher, there are several arguments you probably want to use:
@@ -36,7 +35,6 @@ OPTIONS:
     -p <port>            Output file to put compiled crushmap into (Default: 8080)
     -f <prefetch>        Path with a list of crate_name=version to pre-fetch
     -r <refresh>         Refresh rate for the git index (Default: 600)
-    -t <timeout>         How long, in hours, to keep cached crates around (Default: 168 / 7 days)
     -u <upstream>        Upstream Crate source (Default: https://crates.io/api/v1/crates/)
 
 ```

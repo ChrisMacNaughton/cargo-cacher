@@ -14,7 +14,7 @@ pub fn init_sync(git_path: PathBuf, index_path: &String, port: u16, interval: Du
     });
 }
 
-fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
+pub fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
     debug!("Syncing git repo at {} with {}",
            git_path.to_str().unwrap(),
            index_path);

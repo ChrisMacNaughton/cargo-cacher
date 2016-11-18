@@ -7,18 +7,17 @@ extern crate log;
 extern crate logger;
 #[macro_use]
 extern crate router;
+extern crate rustc_serialize;
+extern crate scoped_threadpool;
 extern crate simple_logger;
+extern crate walkdir;
 
-use std::fs::File;
-use std::io::prelude::*;
-use std::io;
 use std::time::Duration;
 use std::path::PathBuf;
-use std::process::{Command, ExitStatus};
 use std::str::FromStr;
-use std::thread;
 
 mod index_sync;
+mod crates;
 mod git;
 
 use clap::{Arg, App};
@@ -26,10 +25,10 @@ use clap::{Arg, App};
 // Iron Stuff
 use iron::status;
 use iron::prelude::*;
-
 use logger::Logger;
-
 use router::Router;
+
+use crates::{pre_fetch, fetch_all, fetch};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -38,6 +37,7 @@ pub struct Config {
     index: String,
     port: u16,
     refresh_rate: u64,
+    threads: u32,
     /// hours to keep the files around
     cache_timeout: u64,
     log_level: log::LogLevel,
@@ -78,16 +78,16 @@ fn main() {
             .required(false)
             .takes_value(true)
             .help("Refresh rate for the git index (Default: 600)"))
-        .arg(Arg::with_name("timeout")
-            .short("t")
-            .required(false)
-            .takes_value(true)
-            .help("How long, in hours, to keep cached crates around (Default: 168 / 7 days)"))
         .arg(Arg::with_name("prefetch")
             .short("f")
             .takes_value(true)
             .required(false)
             .help("Path with a list of crate_name=version to pre-fetch"))
+        .arg(Arg::with_name("threads")
+            .short("t")
+            .help("How many threads to use to fetch crates in the background")
+            .takes_value(true))
+        .arg(Arg::with_name("all").long("all").short("a").help("Prefetch entire Cargo index"))
         .get_matches();
 
     let log_level = match matches.occurrences_of("debug") {
@@ -111,6 +111,9 @@ fn main() {
         cache_timeout: u64::from_str(matches.value_of("refresh")
                 .unwrap_or("168"))
             .unwrap_or(168),
+        threads: u32::from_str(matches.value_of("threads")
+                .unwrap_or("16"))
+            .unwrap_or(16),
         log_level: log_level,
     };
 
@@ -120,16 +123,31 @@ fn main() {
     let _ = std::fs::create_dir_all(PathBuf::from(format!("{}/{}", config.index_path, "crates")));
     let _ = std::fs::create_dir_all(PathBuf::from(format!("{}/{}", config.index_path, "index")));
 
+    let mut crate_path = config.index_path.clone();
+    crate_path.push_str("/crates");
+
     let mut git_index: String = config.index_path.clone();
     git_index.push_str("/index");
-    index_sync::init_sync(PathBuf::from(git_index),
+
+    match matches.occurrences_of("all") {
+        1 => {
+            index_sync::git_sync(&PathBuf::from(&git_index), &config.index, config.port);
+            fetch_all(&config);
+        }
+        _ => {
+            if let Some(prefetch) = matches.value_of("prefetch").map(|r| r.to_string()) {
+                let config = config.clone();
+                pre_fetch(prefetch, config);
+            }
+        }
+    }
+    index_sync::init_sync(PathBuf::from(&git_index),
                           &config.index,
                           config.port,
                           Duration::from_secs(config.refresh_rate));
-    if let Some(prefetch) = matches.value_of("prefetch").map(|r| r.to_string()) {
-        let config = config.clone();
-        pre_fetch(prefetch, config);
-    }
+
+
+
 
     // web server to handle DL requests
 
@@ -217,50 +235,4 @@ fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
     }
 
     // Ok(Response::with((status::Ok, "Ok")))
-}
-
-fn fetch(path: &PathBuf,
-         upstream: &str,
-         index_path: &str,
-         crate_name: &str,
-         crate_version: &str)
-         -> Result<ExitStatus, io::Error> {
-    info!("Fetching {}(v: {})", crate_name, crate_version);
-    let url = format!("{}/{}/{}/download", upstream, crate_name, crate_version);
-    let _ = std::fs::create_dir_all(PathBuf::from(format!("{}/crates/{}", index_path, crate_name)));
-    Command::new("curl").arg("-o").arg(&path) // Save to disk
-                         .arg("-L") // Follow redirects
-                         .arg("-s") // Quietly!
-                         // .current_dir(path)
-                         .arg(url)
-                         .status()
-}
-
-fn pre_fetch(prefetch_path: String, config: Config) {
-    thread::spawn(move || {
-        debug!("Prefetching file at {}!", prefetch_path);
-        if let Ok(f) = File::open(prefetch_path) {
-            let reader = io::BufReader::new(f);
-            for line in reader.lines().filter(|l| l.is_ok()).map(|l| l.unwrap()) {
-                let mut split = line.split("=");
-                if let Some(crate_name) = split.next() {
-                    if let Some(crate_version) = split.next() {
-                        let path = PathBuf::from(format!("{}/crates/{}/{}",
-                                                         config.index_path,
-                                                         crate_name,
-                                                         crate_version));
-                        if path.exists() {
-                            debug!("{}:{} is already fetched", crate_name, crate_version);
-                        } else {
-                            let _ = fetch(&path,
-                                          &config.upstream,
-                                          &config.index_path,
-                                          &crate_name,
-                                          &crate_version);
-                        }
-                    }
-                }
-            }
-        }
-    });
 }
