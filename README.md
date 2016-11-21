@@ -25,17 +25,20 @@ USAGE:
     cargo-cacher [FLAGS] [OPTIONS]
 
 FLAGS:
+    -a, --all        Prefetch entire Cargo index
     -d               Sets the level of debugging information
     -h, --help       Prints help information
     -V, --version    Prints version information
 
 OPTIONS:
     -g <git>             Upstream git index (Default: https://github.com/rust-lang/crates.io-index.git)
-    -i <index>           Path to store the indexes (git and fiels) at (Default: ./index)
+    -i <index>           Path to store the indexes (git and fiels) at (Default: $HOME/.crates)
     -p <port>            Output file to put compiled crushmap into (Default: 8080)
     -f <prefetch>        Path with a list of crate_name=version to pre-fetch
     -r <refresh>         Refresh rate for the git index (Default: 600)
+    -t <threads>         How many threads to use to fetch crates in the background
     -u <upstream>        Upstream Crate source (Default: https://crates.io/api/v1/crates/)
+
 
 ```
 
