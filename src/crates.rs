@@ -80,7 +80,8 @@ pub fn fetch_all(config: &Config) {
             for entry in WalkDir::new(git_path)
                 .into_iter()
                 .filter_map(|e| e.ok())
-                .filter(|f| f.file_type().is_file()) {
+                .filter(|f| f.file_type().is_file())
+                .filter(|f| f.file_name() != "config.json") {
                 trace!("Found file at {:?}", entry.file_name());
 
                 let config = config.clone();
