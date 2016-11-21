@@ -62,7 +62,7 @@ fn main() {
             .short("i")
             .required(false)
             .takes_value(true)
-            .help("Path to store the indexes (git and fiels) at (Default: ./index)"))
+            .help("Path to store the indexes (git and fiels) at (Default: $HOME/.crates)"))
         .arg(Arg::with_name("upstream")
             .short("u")
             .required(false)
@@ -97,7 +97,7 @@ fn main() {
         3 | _ => log::LogLevel::Trace,
     };
     let config = Config {
-        index_path: matches.value_of("index").unwrap_or("./index").into(),
+        index_path: matches.value_of("index").unwrap_or("~/.crates").into(),
         upstream: matches.value_of("upstream").unwrap_or("https://crates.io/api/v1/crates/").into(),
         index: matches.value_of("git")
             .unwrap_or("https://github.com/rust-lang/crates.io-index.git")
