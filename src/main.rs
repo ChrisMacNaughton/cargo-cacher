@@ -120,14 +120,16 @@ fn main() {
     simple_logger::init_with_level(config.log_level).unwrap();
     info!("Configuration: {:?}", config);
 
-    let _ = std::fs::create_dir_all(PathBuf::from(format!("{}/{}", config.index_path, "crates")));
-    let _ = std::fs::create_dir_all(PathBuf::from(format!("{}/{}", config.index_path, "index")));
+
 
     let mut crate_path = config.index_path.clone();
     crate_path.push_str("/crates");
 
     let mut git_index: String = config.index_path.clone();
     git_index.push_str("/index");
+
+    let _ = std::fs::create_dir_all(&crate_path);
+    let _ = std::fs::create_dir_all(&git_index);
 
     match matches.occurrences_of("all") {
         1 => {

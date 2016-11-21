@@ -20,6 +20,7 @@ pub fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
            index_path);
     let mut repo_path = git_path.clone();
     repo_path.push(".git");
+    debug!("Repo path is {:?}", repo_path);
     let status = if repo_path.exists() {
         match Command::new("git")
             .arg("pull")
