@@ -12,6 +12,7 @@ extern crate scoped_threadpool;
 extern crate simple_logger;
 extern crate walkdir;
 
+use std::env;
 use std::time::Duration;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -96,8 +97,9 @@ fn main() {
         2 => log::LogLevel::Debug,
         3 | _ => log::LogLevel::Trace,
     };
+    let default_crate_path = format!("{}/.crates", env::home_dir().unwrap().to_str().unwrap());
     let config = Config {
-        index_path: matches.value_of("index").unwrap_or("~/.crates").into(),
+        index_path: matches.value_of("index").unwrap_or(&default_crate_path).into(),
         upstream: matches.value_of("upstream").unwrap_or("https://crates.io/api/v1/crates/").into(),
         index: matches.value_of("git")
             .unwrap_or("https://github.com/rust-lang/crates.io-index.git")

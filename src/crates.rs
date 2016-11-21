@@ -80,6 +80,7 @@ pub fn fetch_all(config: &Config) {
             for entry in WalkDir::new(git_path)
                 .into_iter()
                 .filter_map(|e| e.ok())
+                .filter(|f| !f.path().to_str().unwrap().contains(".git"))
                 .filter(|f| f.file_type().is_file())
                 .filter(|f| f.file_name() != "config.json") {
                 trace!("Found file at {:?}", entry.file_name());
@@ -95,7 +96,12 @@ pub fn fetch_all(config: &Config) {
 
                                     try_fetch(&config, &package.name, &package.vers);
                                 }
-                                Err(e) => debug!("Had a problem with \"{}\": {:?}", line, e),
+                                Err(e) => {
+                                    debug!("Had a problem with \"{}\" / {:?}: {:?}",
+                                           line,
+                                           entry.path(),
+                                           e)
+                                }
                             };
 
                         }
