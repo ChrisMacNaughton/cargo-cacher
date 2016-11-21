@@ -49,6 +49,19 @@ fn main() {
 
     let matches = App::new("cargo-cacher")
         .version(crate_version!())
+        .about(r#"Cargo-cacher is a caching proxy for Cargo, Rust's package manager.
+
+The cacher can be used easily by setting your $HOME/.cargo/config to:
+
+`
+[source]
+
+[source.crates-io]
+replace-with = "mirror"
+
+[source.mirror]
+registry = "http://localhost:8080/index"
+`"#)
         .arg(Arg::with_name("debug")
             .short("d")
             .multiple(true)
