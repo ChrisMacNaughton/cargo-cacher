@@ -18,7 +18,7 @@ registry = "http://localhost:8080/index"
 replace-with = "mirror"
 ```
 
-Once this is in place, your builds will go through the local proxy, and the crates will be pulled down to the local filesystem when they are first requested. The path can be a remote hosst as long as the path is to /index. To run cargo-cacher, there are several arguments you probably want to use:
+Once this is in place, your builds will go through the local proxy, and the crates will be pulled down to the local filesystem when they are first requested. The path can be a remote host as long as the path is to /index. To run cargo-cacher, there are several arguments you probably want to use:
 
 ```
 USAGE:
@@ -42,6 +42,12 @@ OPTIONS:
 
 ```
 
+## Full mirror
+
+cargo-cacher supports providing a full mirror with the `-a` flag. Passing this flag will create a background thread pool on startup that will fetch all crates currently in the upstream index.
+
+## Prefetch
+
 Prefetch is an option that I feel deserves further attention. Prefetch is a path to a file containing one line per crate/version, example:
 
 ```
@@ -55,3 +61,8 @@ The above input will fetch log version 0.3.6 and libc version 0.1.12 before bein
 
 - Add expiration on background thread
 - Add statistics
+
+If you would like to support me:
+
+- [Gratipay](https://gratipay.com/~IceyEC/)
+- [Bountysource](https://www.bountysource.com/teams/iceyec)

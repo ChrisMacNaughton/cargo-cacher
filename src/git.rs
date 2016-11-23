@@ -9,6 +9,7 @@ use iron::headers::ContentType;
 // Iron Stuff
 use iron::status::{self, Status};
 use iron::prelude::*;
+use iron::response::BodyReader;
 
 use iron::mime::{Mime, TopLevel, SubLevel};
 
@@ -87,8 +88,8 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
             .push(value.to_string());
     }
 
-    let mut buf = Vec::new();
-    let _ = rdr.read_to_end(&mut buf);
+    // let mut buf = Vec::new();
+    // let _ = rdr.read_to_end(&mut buf);
 
     let content_type = headers.get("Content-Type")
         .unwrap_or(&vec![])
@@ -100,6 +101,6 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
         .unwrap_or("")
         .into();
     Ok(Response::with((Status::Ok,
-                       buf,
+                       BodyReader(rdr),
                        Mime(TopLevel::Application, SubLevel::Ext(content_type), vec![]))))
 }

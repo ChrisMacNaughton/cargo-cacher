@@ -5,12 +5,19 @@ use std::process::{Command, Stdio};
 use std::thread::{self, sleep};
 use std::time::Duration;
 
-pub fn init_sync(git_path: PathBuf, index_path: &String, port: u16, interval: Duration) {
-    let index_path = index_path.clone();
-    git_sync(&git_path, &index_path, port);
+use super::Config;
+use crates::fetch_all;
+
+pub fn init_sync(git_path: PathBuf, config: &Config) {
+    let config = config.clone();
+    let interval = Duration::from_secs(config.refresh_rate);
+    git_sync(&git_path, &config.index, config.port);
     thread::spawn(move || loop {
         sleep(interval);
-        git_sync(&git_path, &index_path, port);
+        git_sync(&git_path, &config.index, config.port);
+        if config.all {
+            fetch_all(&config);
+        }
     });
 }
 

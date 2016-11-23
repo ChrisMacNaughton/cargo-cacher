@@ -51,25 +51,33 @@ fn try_fetch(config: &Config, crate_name: &str, crate_version: &str) {
     }
 }
 
-pub fn pre_fetch(prefetch_path: String, config: Config) {
-    thread::spawn(move || {
-        debug!("Prefetching file at {}!", prefetch_path);
-        if let Ok(f) = File::open(prefetch_path) {
-            let reader = io::BufReader::new(f);
-            for line in reader.lines().filter(|l| l.is_ok()).map(|l| l.unwrap()) {
-                let mut split = line.split("=");
-                if let Some(crate_name) = split.next() {
-                    if let Some(crate_version) = split.next() {
-                        try_fetch(&config, crate_name, crate_version);
+pub fn pre_fetch(config: &Config) {
+    fetch_all(&config);
+    let config = config.clone();
+    if let Some(_) = config.prefetch_path {
+        let prefetch_path = config.prefetch_path.clone().unwrap();
+        thread::spawn(move || {
+            debug!("Prefetching file at {}!", prefetch_path);
+            if let Ok(f) = File::open(prefetch_path) {
+                let reader = io::BufReader::new(f);
+                for line in reader.lines().filter(|l| l.is_ok()).map(|l| l.unwrap()) {
+                    let mut split = line.split("=");
+                    if let Some(crate_name) = split.next() {
+                        if let Some(crate_version) = split.next() {
+                            try_fetch(&config, crate_name, crate_version);
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }
 }
 
 
 pub fn fetch_all(config: &Config) {
+    if !config.all {
+        return;
+    }
     let config = config.clone();
     thread::spawn(move || {
         let mut pool = Pool::new(config.threads);
