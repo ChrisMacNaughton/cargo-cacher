@@ -15,10 +15,13 @@ extern crate walkdir;
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::mpsc::SyncSender;
+use std::sync::Mutex;
 
 mod index_sync;
 mod crates;
 mod git;
+mod stats;
 
 use clap::{Arg, App};
 
@@ -28,7 +31,7 @@ use iron::prelude::*;
 use logger::Logger;
 use router::Router;
 
-use crates::{pre_fetch, fetch};
+use crates::{pre_fetch, fetch, size};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -143,6 +146,18 @@ impl Config {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct CargoRequest {
+    /// crate name, ex: cargo-cacher
+    name: String,
+    /// major.minor.patch
+    version: String,
+    /// Cache hit?
+    hit: bool,
+    /// Filesize in bytes
+    size: u64,
+}
+
 fn main() {
     let config = Config::init();
 
@@ -154,8 +169,8 @@ fn main() {
     index_sync::init_sync(PathBuf::from(&config.git_index_path), &config);
 
     pre_fetch(&config);
-
-    server(&config)
+    let collector = stats::stat_collector();
+    server(&config, collector)
 }
 
 fn setup_filesystem(config: &Config) {
@@ -163,14 +178,15 @@ fn setup_filesystem(config: &Config) {
     let _ = std::fs::create_dir_all(&config.git_index_path);
 }
 
-fn server(config: &Config) {
+fn server(config: &Config, stats: SyncSender<CargoRequest>) {
     // web server to handle DL requests
     let host = format!("0.0.0.0:{}", config.port);
     let router = router!(
         download: get "api/v1/crates/:crate_name/:crate_version/download" => {
             let config = config.clone();
+            let stats = Mutex::new(stats.clone());
             move |request: &mut Request|
-                fetch_download(request, &config)
+                fetch_download(request, &config, &stats)
         },
         head: get "index/*" => {
             let config = config.clone();
@@ -210,7 +226,11 @@ pub fn log(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((status::Ok, "Ok")))
 }
 
-fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
+fn fetch_download(req: &mut Request,
+                  config: &Config,
+                  stats: &Mutex<SyncSender<CargoRequest>>)
+                  -> IronResult<Response> {
+    let stats = stats.lock().unwrap();
     let ref crate_name = req.extensions
         .get::<Router>()
         .unwrap()
@@ -229,6 +249,12 @@ fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
                                      crate_version));
     if path.exists() {
         debug!("path {:?} exists!", path);
+        let _ = stats.send(CargoRequest {
+            name: crate_name.to_string(),
+            version: crate_version.to_string(),
+            hit: true,
+            size: size(&path),
+        });
         Ok(Response::with((status::Ok, path)))
     } else {
         debug!("path {:?} doesn't exist!", path);
@@ -238,7 +264,15 @@ fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
                     &config.index_path,
                     &crate_name,
                     &crate_version) {
-            Ok(_) => Ok(Response::with((status::Ok, path))),
+            Ok(_) => {
+                let _ = stats.send(CargoRequest {
+                    name: crate_name.to_string(),
+                    version: crate_version.to_string(),
+                    hit: false,
+                    size: size(&path),
+                });
+                Ok(Response::with((status::Ok, path)))
+            }
             Err(e) => {
                 error!("{:?}", e);
                 return Ok(Response::with((status::ServiceUnavailable,

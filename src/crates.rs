@@ -35,6 +35,13 @@ pub fn fetch(path: &PathBuf,
                          .status()
 }
 
+pub fn size(path: &PathBuf) -> u64 {
+    if let Ok(metadata) = fs::metadata(path) {
+        return metadata.len();
+    }
+    0
+}
+
 fn try_fetch(config: &Config, crate_name: &str, crate_version: &str) {
     let path = PathBuf::from(format!("{}/crates/{}/{}",
                                      config.index_path,
