@@ -113,8 +113,7 @@ impl Database {
 
     pub fn hits<T: Into<String>>(&self, time: T) -> i32 {
         let mut stmt = self.conn
-            .prepare("SELECT count(*) FROM downloads WHERE time > date('now') - $1 AND hit = \
-                      1")
+            .prepare("SELECT count(*) FROM downloads WHERE time > date('now') - $1 AND hit = 1")
             .unwrap();
         let rows = match stmt.query_map(&[&time.into()], |row| row.get(0)) {
             Ok(s) => s,
@@ -130,8 +129,8 @@ impl Database {
 
     pub fn bandwidth_saved<T: Into<String>>(&self, time: T) -> i64 {
         let mut stmt = self.conn
-            .prepare("SELECT sum(size) FROM downloads WHERE time > date('now') - $1 AND hit = \
-                      1")
+            .prepare("SELECT COALESCE(sum(size), 0) FROM downloads WHERE time > date('now') - $1 \
+                      AND hit = 1")
             .unwrap();
         let rows = match stmt.query_map(&[&time.into()], |row| row.get(0)) {
             Ok(s) => s,
@@ -139,7 +138,6 @@ impl Database {
         };
         for record in rows {
             if let Ok(count) = record {
-                println!("Count; {}", count);
                 return count;
             }
         }
