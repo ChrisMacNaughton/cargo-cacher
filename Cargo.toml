@@ -1,6 +1,6 @@
 [package]
 name = "cargo-cacher"
-version = "1.0.2"
+version = "1.0.3"
 license = "MIT OR Apache-2.0"
 description = "cargo-cacher is a crates.io proxy that will proxy requests made when building a package with Cargo"
 authors = ["Chris MacNaughton <chmacnaughton@gmail.com>"]

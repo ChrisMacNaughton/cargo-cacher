@@ -89,7 +89,7 @@ impl Config {
                 .short("p")
                 .required(false)
                 .takes_value(true)
-                .help("Output file to put compiled crushmap into (Default: 8080)"))
+                .help("Port to listen on (Default: 8080)"))
             .arg(Arg::with_name("refresh")
                 .short("r")
                 .required(false)
