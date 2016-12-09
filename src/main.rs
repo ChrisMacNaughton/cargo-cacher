@@ -7,6 +7,7 @@ extern crate log;
 extern crate logger;
 #[macro_use]
 extern crate router;
+extern crate rusqlite;
 extern crate rustc_serialize;
 extern crate scoped_threadpool;
 extern crate simple_logger;
@@ -15,20 +16,27 @@ extern crate walkdir;
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::mpsc::SyncSender;
+use std::sync::Mutex;
 
 mod index_sync;
 mod crates;
 mod git;
+mod stats;
 
 use clap::{Arg, App};
 
 // Iron Stuff
 use iron::status;
 use iron::prelude::*;
+use iron::AfterMiddleware;
 use logger::Logger;
 use router::Router;
 
-use crates::{pre_fetch, fetch};
+use iron::mime::{Mime, TopLevel, SubLevel};
+
+use crates::{pre_fetch, fetch, size};
+use stats::Database;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -143,6 +151,18 @@ impl Config {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct CargoRequest {
+    /// crate name, ex: cargo-cacher
+    name: String,
+    /// major.minor.patch
+    version: String,
+    /// Cache hit?
+    hit: bool,
+    /// Filesize in bytes
+    size: i64,
+}
+
 fn main() {
     let config = Config::init();
 
@@ -154,8 +174,8 @@ fn main() {
     index_sync::init_sync(PathBuf::from(&config.git_index_path), &config);
 
     pre_fetch(&config);
-
-    server(&config)
+    let collector = stats::stat_collector();
+    server(&config, collector)
 }
 
 fn setup_filesystem(config: &Config) {
@@ -163,14 +183,33 @@ fn setup_filesystem(config: &Config) {
     let _ = std::fs::create_dir_all(&config.git_index_path);
 }
 
-fn server(config: &Config) {
+struct CorsMiddleware;
+
+impl AfterMiddleware for CorsMiddleware {
+    fn after(&self, _req: &mut Request, mut res: Response) -> IronResult<Response> {
+        res.headers.set(iron::headers::AccessControlAllowOrigin::Any);
+        Ok(res)
+    }
+}
+
+fn server(config: &Config, stats: SyncSender<CargoRequest>) {
     // web server to handle DL requests
     let host = format!("0.0.0.0:{}", config.port);
     let router = router!(
+        stats_json: get "/stats.json" => {
+                let config = config.clone();
+                move |request: &mut Request|
+                    stats_json(&config)
+        },
+        stats: get "/stats" => {
+            move |request: &mut Request|
+                stats_view()
+        },
         download: get "api/v1/crates/:crate_name/:crate_version/download" => {
             let config = config.clone();
+            let stats = Mutex::new(stats.clone());
             move |request: &mut Request|
-                fetch_download(request, &config)
+                fetch_download(request, &config, &stats)
         },
         head: get "index/*" => {
             let config = config.clone();
@@ -200,6 +239,7 @@ fn server(config: &Config) {
     chain.link_before(logger_before);
     chain.link_after(logger_after);
 
+    chain.link_after(CorsMiddleware);
     println!("Listening on {}", host);
     // Iron::new(chain).http(host).unwrap();
     Iron::new(chain).http(&host[..]).unwrap();
@@ -210,7 +250,11 @@ pub fn log(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((status::Ok, "Ok")))
 }
 
-fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
+fn fetch_download(req: &mut Request,
+                  config: &Config,
+                  stats: &Mutex<SyncSender<CargoRequest>>)
+                  -> IronResult<Response> {
+    let stats = stats.lock().unwrap();
     let ref crate_name = req.extensions
         .get::<Router>()
         .unwrap()
@@ -229,6 +273,12 @@ fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
                                      crate_version));
     if path.exists() {
         debug!("path {:?} exists!", path);
+        let _ = stats.send(CargoRequest {
+            name: crate_name.to_string(),
+            version: crate_version.to_string(),
+            hit: true,
+            size: size(&path) as i64,
+        });
         Ok(Response::with((status::Ok, path)))
     } else {
         debug!("path {:?} doesn't exist!", path);
@@ -238,7 +288,15 @@ fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
                     &config.index_path,
                     &crate_name,
                     &crate_version) {
-            Ok(_) => Ok(Response::with((status::Ok, path))),
+            Ok(_) => {
+                let _ = stats.send(CargoRequest {
+                    name: crate_name.to_string(),
+                    version: crate_version.to_string(),
+                    hit: false,
+                    size: size(&path) as i64,
+                });
+                Ok(Response::with((status::Ok, path)))
+            }
             Err(e) => {
                 error!("{:?}", e);
                 return Ok(Response::with((status::ServiceUnavailable,
@@ -248,4 +306,22 @@ fn fetch_download(req: &mut Request, config: &Config) -> IronResult<Response> {
     }
 
     // Ok(Response::with((status::Ok, "Ok")))
+}
+
+fn stats_view() -> IronResult<Response> {
+    let db = Database::new(None::<&str>);
+    let stats = db.stats();
+    Ok(Response::with((status::Ok,
+                       format!(include_str!("stats.html"),
+                               stats.downloads,
+                               stats.hits,
+                               stats.misses,
+                               stats.bandwidth_saved),
+                       Mime(TopLevel::Text, SubLevel::Html, vec![]))))
+}
+
+fn stats_json(config: &Config) -> IronResult<Response> {
+    let db = Database::new(None::<&str>);
+    let stats = db.stats();
+    Ok(Response::with((status::Ok, stats.as_json(), Mime(TopLevel::Text, SubLevel::Json, vec![]))))
 }
