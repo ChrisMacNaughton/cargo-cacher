@@ -1,6 +1,6 @@
 [package]
 name = "cargo-cacher"
-version = "1.0.3"
+version = "1.1.0"
 license = "MIT OR Apache-2.0"
 description = "cargo-cacher is a crates.io proxy that will proxy requests made when building a package with Cargo"
 authors = ["Chris MacNaughton <chmacnaughton@gmail.com>"]
@@ -13,7 +13,7 @@ iron = "0.4"
 log = "0.3.6"
 logger = "0.1"
 router = "0.4"
-rusqlite = "*"
+rusqlite = "0.7"
 rustc-serialize = "0.3"
 scoped_threadpool = "0.1"
 simple_logger = "0.4"

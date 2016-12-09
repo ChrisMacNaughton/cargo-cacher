@@ -197,12 +197,11 @@ fn server(config: &Config, stats: SyncSender<CargoRequest>) {
     let host = format!("0.0.0.0:{}", config.port);
     let router = router!(
         stats_json: get "/stats.json" => {
-                let config = config.clone();
-                move |request: &mut Request|
-                    stats_json(&config)
+                move |_request: &mut Request|
+                    stats_json()
         },
         stats: get "/stats" => {
-            move |request: &mut Request|
+            move |_request: &mut Request|
                 stats_view()
         },
         download: get "api/v1/crates/:crate_name/:crate_version/download" => {
@@ -320,7 +319,7 @@ fn stats_view() -> IronResult<Response> {
                        Mime(TopLevel::Text, SubLevel::Html, vec![]))))
 }
 
-fn stats_json(config: &Config) -> IronResult<Response> {
+fn stats_json() -> IronResult<Response> {
     let db = Database::new(None::<&str>);
     let stats = db.stats();
     Ok(Response::with((status::Ok, stats.as_json(), Mime(TopLevel::Text, SubLevel::Json, vec![]))))

@@ -10,12 +10,6 @@ pub struct Database {
 }
 
 #[derive(Debug)]
-pub struct Crate {
-    id: i32,
-    name: String,
-}
-
-#[derive(Debug)]
 pub struct Statistics {
     pub downloads: i64,
     pub hits: i64,
@@ -142,21 +136,6 @@ impl Database {
             }
         }
         0
-    }
-
-    pub fn crates(&self) -> Result<Vec<Crate>, rusqlite::Error> {
-        let mut stmt = self.conn.prepare("SELECT id, name FROM crates").unwrap();
-        let rows = stmt.query_map(&[], |row| {
-                Crate {
-                    id: row.get(0),
-                    name: row.get(1),
-                }
-            })?;
-        let mut crates = Vec::new();
-        for record in rows {
-            crates.push(record?);
-        }
-        Ok(crates)
     }
 
     fn crate_id<T: Into<String>>(&self, name: T) -> Option<i32> {
