@@ -19,11 +19,12 @@ pub struct Statistics {
 
 impl Statistics {
     pub fn as_json(&self) -> String {
-        format!(r#"{{"downloads": {}, "hits": {}, "misses": {}, "bandwidth_saved": {}}}"#,
-                self.downloads,
-                self.hits,
-                self.misses,
-                self.bandwidth_saved)
+        json!({
+            "downloads": self.downloads,
+            "hits": self.hits,
+            "misses": self.misses,
+            "bandwidth_saved": self.bandwidth_saved
+        }).to_string()
     }
 }
 
@@ -36,7 +37,7 @@ impl Database {
             "file::memory:?cache=shared".to_string()
             // "database.sqlite".into()
         };
-        let conn = rusqlite::SqliteConnection::open(&connection_string).unwrap();
+        let conn = rusqlite::Connection::open(&connection_string).unwrap();
         conn.execute("
             CREATE TABLE IF NOT EXISTS crates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

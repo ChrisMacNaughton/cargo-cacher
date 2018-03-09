@@ -6,13 +6,13 @@ use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use std::thread;
 
-use rustc_serialize::json;
+use serde_json;
 use scoped_threadpool::Pool;
 use walkdir::WalkDir;
 
 use super::Config;
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 pub struct Package {
     name: String,
     vers: String,
@@ -105,7 +105,8 @@ pub fn fetch_all(config: &Config) {
                     if let Ok(f) = File::open(entry.path()) {
                         let reader = io::BufReader::new(f);
                         for line in reader.lines().filter_map(|l| l.ok()) {
-                            match json::decode::<Package>(&line) {
+                            match serde_json::from_str::<Package>(&line) {
+                            // match json::decode::<Package>(&line) {
                                 Ok(package) => {
                                     trace!("Found package: {:?}", package);
 

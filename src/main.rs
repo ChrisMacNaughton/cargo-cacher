@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate clap;
-#[macro_use]
 extern crate iron;
 #[macro_use]
 extern crate log;
@@ -8,8 +7,10 @@ extern crate logger;
 #[macro_use]
 extern crate router;
 extern crate rusqlite;
-extern crate rustc_serialize;
 extern crate scoped_threadpool;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
+#[macro_use] extern crate serde_json;
 extern crate simple_logger;
 extern crate walkdir;
 
