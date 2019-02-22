@@ -25,21 +25,23 @@ pub fn fetch(path: &PathBuf,
              crate_version: &str)
              -> Result<ExitStatus, io::Error> {
     debug!("Fetching {}(v: {})", crate_name, crate_version);
-    let url = format!("{}/{}/{}/download", upstream, crate_name, crate_version);
+    let url = format!("{}{}/{}/download", upstream, crate_name, crate_version);
+    trace!("Fetching from {}", url);
     let _ = fs::create_dir_all(PathBuf::from(format!("{}/crates/{}", index_path, crate_name)));
     Command::new("curl").arg("-o").arg(&path) // Save to disk
                          .arg("-L") // Follow redirects
-                         .arg("-s") // Quietly!
+                         .arg("-v")
+                         // .arg("-s") // Quietly!
                          // .current_dir(path)
                          .arg(url)
                          .status()
 }
 
 pub fn size(path: &PathBuf) -> u64 {
-    if let Ok(metadata) = fs::metadata(path) {
-        return metadata.len();
-    }
-    0
+  match fs::metadata(path) {
+    Ok(metadata) => metadata.len(),
+    _ => 0
+  }
 }
 
 fn try_fetch(config: &Config, crate_name: &str, crate_version: &str) {
