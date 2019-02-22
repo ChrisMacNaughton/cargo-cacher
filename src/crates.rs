@@ -100,7 +100,7 @@ pub fn fetch_all(config: &Config) {
                 .filter(|f| !f.path().to_str().unwrap().contains(".git"))
                 .filter(|f| f.file_type().is_file())
                 .filter(|f| f.file_name() != "config.json") {
-                trace!("Found file at {:?}", entry.file_name());
+                trace!("Found file at {:?}: {:?}", entry.file_name(), entry);
 
                 let config = config.clone();
                 scope.execute(move || {
