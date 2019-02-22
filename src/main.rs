@@ -92,7 +92,7 @@ impl Config {
                 .short("u")
                 .required(false)
                 .takes_value(true)
-                .help("Upstream Crate source (Default: https://crates.io/api/v1/crates/)"))
+                .help("Upstream Crate source (Default: https://static.crates.io/crates/)"))
             .arg(Arg::with_name("port")
                 .long("port")
                 .short("p")
@@ -136,7 +136,7 @@ impl Config {
             crate_path: crate_path,
             git_index_path: git_index,
             upstream: matches.value_of("upstream")
-                .unwrap_or("https://crates.io/api/v1/crates/")
+                .unwrap_or("https://static.crates.io/crates/")
                 .into(),
             index: matches.value_of("git")
                 .unwrap_or("https://github.com/rust-lang/crates.io-index.git")

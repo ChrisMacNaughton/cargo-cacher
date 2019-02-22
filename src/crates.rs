@@ -30,9 +30,7 @@ pub fn fetch(path: &PathBuf,
     let _ = fs::create_dir_all(PathBuf::from(format!("{}/crates/{}", index_path, crate_name)));
     Command::new("curl").arg("-o").arg(&path) // Save to disk
                          .arg("-L") // Follow redirects
-                         .arg("-v")
-                         // .arg("-s") // Quietly!
-                         // .current_dir(path)
+                         .arg("-s") // Quietly!
                          .arg(url)
                          .status()
 }
@@ -52,11 +50,14 @@ fn try_fetch(config: &Config, crate_name: &str, crate_version: &str) {
     if path.exists() {
         trace!("{}:{} is already fetched", crate_name, crate_version);
     } else {
-        let _ = fetch(&path,
+        match fetch(&path,
                       &config.upstream,
                       &config.index_path,
                       &crate_name,
-                      &crate_version);
+                      &crate_version) {
+          Ok(_) => {},
+          Err(e) => error!("Couldn't fetch {}/{}: {:?}", crate_name, crate_version, e),
+        }
     }
 }
 
@@ -100,7 +101,7 @@ pub fn fetch_all(config: &Config) {
                 .filter(|f| !f.path().to_str().unwrap().contains(".git"))
                 .filter(|f| f.file_type().is_file())
                 .filter(|f| f.file_name() != "config.json") {
-                trace!("Found file at {:?}: {:?}", entry.file_name(), entry);
+                trace!("Found crate info file at {:?}", entry.path());
 
                 let config = config.clone();
                 scope.execute(move || {
@@ -115,10 +116,10 @@ pub fn fetch_all(config: &Config) {
                                     try_fetch(&config, &package.name, &package.vers);
                                 }
                                 Err(e) => {
-                                    debug!("Had a problem with \"{}\" / {:?}: {:?}",
-                                           line,
-                                           entry.path(),
-                                           e)
+                                    warn!("Had a problem with \"{}\" / {:?}: {:?}",
+                                          line,
+                                          entry.path(),
+                                          e)
                                 }
                             };
 
