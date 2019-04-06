@@ -4,6 +4,7 @@ use std::thread;
 use super::CargoRequest;
 
 use rusqlite;
+use rusqlite::params;
 
 pub struct Database {
     conn: rusqlite::Connection,
@@ -43,7 +44,7 @@ impl Database {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT
             );",
-                     &[])
+                     params![])
             .unwrap();
         conn.execute("
              CREATE TABLE IF NOT EXISTS crate_versions (
@@ -51,7 +52,7 @@ impl Database {
                  version TEXT,
                  crate_id INTEGER
              );",
-                     &[])
+                     params![])
             .unwrap();
         conn.execute("
              CREATE TABLE IF NOT EXISTS downloads (
@@ -60,19 +61,19 @@ impl Database {
                  hit BOOLEAN,
                  size BIGINT
              );",
-                     &[])
+                     params![])
             .unwrap();
 
         conn.execute("
             CREATE UNIQUE INDEX IF NOT EXISTS unique_crate_names
             ON crates (name)",
-                     &[])
+                     params![])
             .unwrap();
 
         conn.execute("
             CREATE UNIQUE INDEX IF NOT EXISTS unique_crate_versions
             ON crate_versions (crate_id, version)",
-                     &[])
+                     params![])
             .unwrap();
         Database { conn: conn }
     }
@@ -157,7 +158,7 @@ impl Database {
             WHERE crate_id = $1 \
                       AND version = $2")
             .unwrap();
-        let rows = stmt.query_map(&[&crate_id, &version.into()], |row| row.get(0)).unwrap();
+        let rows = stmt.query_map(params![crate_id, version.into()], |row| row.get(0)).unwrap();
         for record in rows {
             if let Ok(id) = record {
                 return Some(id);
@@ -176,12 +177,12 @@ impl Database {
         let crate_version = crate_version.into();
         let _ = self.conn
             .execute("INSERT OR IGNORE INTO crates (name) VALUES ($1)",
-                     &[&crate_name])
+                     params![crate_name])
             .unwrap();
         let crate_id = self.crate_id(crate_name).unwrap();
         let _ = self.conn
             .execute("INSERT OR IGNORE INTO crate_versions (crate_id, version) VALUES ($1, $2)",
-                     &[&crate_id, &crate_version])
+                     params![crate_id, crate_version])
             .unwrap();
         let version_id = self.version_id(crate_id, crate_version).unwrap();
 
@@ -189,7 +190,7 @@ impl Database {
         let _ = self.conn
             .execute("INSERT INTO downloads (version_id, time, hit, size) VALUES ($1, \
                       date('now'), $2, $3)",
-                     &[&version_id, &hit, &size]);
+                     params![version_id, hit, size]);
         Ok(())
 
     }
