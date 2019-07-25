@@ -3,17 +3,15 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread::{self, sleep};
-use std::time::Duration;
 
 use super::Config;
 use crates::fetch_all;
 
 pub fn init_sync(git_path: PathBuf, config: &Config) {
     let config = config.clone();
-    let interval = Duration::from_secs(config.refresh_rate);
     git_sync(&git_path, &config.index, &config.extern_url);
     thread::spawn(move || loop {
-        sleep(interval);
+        sleep(config.refresh_interval);
         git_sync(&git_path, &config.index, &config.extern_url);
         if config.all {
             fetch_all(&config);

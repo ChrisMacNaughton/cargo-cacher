@@ -15,12 +15,15 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate simple_logger;
 extern crate walkdir;
+extern crate humantime;
 
 use std::env;
 use std::path::PathBuf;
+use std::process::exit;
 use std::str::FromStr;
 use std::sync::mpsc::SyncSender;
 use std::sync::Mutex;
+use std::time::Duration;
 
 mod crates;
 mod git;
@@ -52,7 +55,7 @@ pub struct Config {
     index: String,
     extern_url: String,
     port: u16,
-    refresh_rate: u64,
+    refresh_interval: Duration,
     threads: u32,
     log_level: log::Level,
 }
@@ -129,7 +132,7 @@ impl Config {
                     .short("r")
                     .required(false)
                     .takes_value(true)
-                    .help("Refresh rate for the git index (Default: 600)"),
+                    .help("Refresh interval for the git index (Default: 10 minutes)"),
             )
             .arg(
                 Arg::with_name("prefetch")
@@ -171,6 +174,19 @@ impl Config {
         let port = u16::from_str(matches.value_of("port")
                     .unwrap_or("8080"))
                 .unwrap_or(8080);
+        let refresh_interval_human = matches.value_of("refresh")
+            .unwrap_or("10 minutes")
+            .parse::<humantime::Duration>();
+        let refresh_interval_seconds = u64::from_str(matches.value_of("refresh").unwrap_or("600"));
+        let refresh_interval = match (refresh_interval_human, refresh_interval_seconds) {
+            (Ok(d), _) => d.into(),
+            (_, Ok(s)) => Duration::new(s, 0),
+            (Err(e), _) => {
+                eprintln!("Error while parsing refresh interval: {}.", e);
+                eprintln!("Try values like \"600s\" or \"2 hours\".");
+                exit(-1);
+            }
+        };
         Config {
             all: matches.is_present("all"),
             prefetch_path: matches.value_of("prefetch").map(|r| r.to_string()),
@@ -189,8 +205,7 @@ impl Config {
             extern_url: matches.value_of("extern-url")
                 .map(Into::into)
                 .unwrap_or(format!("http://localhost:{}", port)),
-            refresh_rate: u64::from_str(matches.value_of("refresh").unwrap_or("600"))
-                .unwrap_or(600),
+            refresh_interval: refresh_interval,
             threads: u32::from_str(matches.value_of("threads").unwrap_or("16")).unwrap_or(16),
             log_level: log_level,
         }
