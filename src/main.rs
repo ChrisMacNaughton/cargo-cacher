@@ -51,7 +51,7 @@ pub struct Config {
     port: u16,
     refresh_rate: u64,
     threads: u32,
-    log_level: log::LogLevel,
+    log_level: log::Level,
 }
 
 impl Config {
@@ -117,10 +117,10 @@ impl Config {
             .get_matches();
 
         let log_level = match matches.occurrences_of("debug") {
-            0 => log::LogLevel::Warn,
-            1 => log::LogLevel::Info,
-            2 => log::LogLevel::Debug,
-            3 | _ => log::LogLevel::Trace,
+            0 => log::Level::Warn,
+            1 => log::Level::Info,
+            2 => log::Level::Debug,
+            3 | _ => log::Level::Trace,
         };
         let default_crate_path = format!("{}/.crates", env::home_dir().unwrap().to_str().unwrap());
         let index_path: String = matches.value_of("index").unwrap_or(&default_crate_path).into();
