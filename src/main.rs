@@ -226,7 +226,7 @@ impl AfterMiddleware for CorsMiddleware {
 
 fn server(config: &Config, stats: SyncSender<CargoRequest>) {
     // web server to handle DL requests
-    let host = format!("0.0.0.0:{}", config.port);
+    let host = format!(":::{}", config.port);
     let router = router!(
         stats_json: get "/stats.json" => {
                 move |_request: &mut Request|
