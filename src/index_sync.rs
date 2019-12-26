@@ -1,7 +1,7 @@
 use std::io::prelude::*;
-use std::fs::File;
+use std::fs::{File, remove_dir_all};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, ExitStatus};
 use std::thread::{self, sleep};
 
 use super::Config;
@@ -27,11 +27,57 @@ pub fn git_sync(git_path: &PathBuf, index_path: &str, extern_url: &str) {
     let mut repo_path = git_path.clone();
     repo_path.push(".git");
     debug!("Repo path is {:?}", repo_path);
-    let status = if repo_path.exists() {
+    if !repo_path.exists() {
+        if Some(())
+            .and_then(|_| Command::new("git")
+                .arg("init")
+                .arg("-qq")
+                .arg(&git_path)
+                .current_dir(git_path)
+                .stderr(Stdio::null())
+                .stdout(Stdio::null())
+                .status()
+                .ok()
+            )
+            .filter(ExitStatus::success)
+            .and_then(|_| Command::new("git")
+                .arg("config")
+                .arg("commit.gpgsign")
+                .arg("false")
+                .stderr(Stdio::null())
+                .stdout(Stdio::null())
+                .current_dir(git_path)
+                .status()
+                .ok()
+            )
+            .filter(ExitStatus::success)
+            .and_then(|_| Command::new("git")
+                .arg("commit")
+                .arg("--allow-empty")
+                .arg("-mTEMP")
+                .arg("-qq")
+                .stderr(Stdio::null())
+                .stdout(Stdio::null())
+                .current_dir(git_path)
+                .status()
+                .ok()
+            )
+            .filter(ExitStatus::success)
+            .is_none()
+        {
+            error!("Failed to prepare empty repository in: {:?}", git_path);
+            remove_dir_all(repo_path).ok();
+            return;
+        }
+    }
+    let status =  {
         match Command::new("git")
             .arg("pull")
             .arg("-q")
             .arg("--rebase")
+            .arg("-f")
+            .arg(index_path)
+            .arg("HEAD:master")
             .stderr(Stdio::null())
             .stdout(Stdio::null())
             .current_dir(git_path)
@@ -42,62 +88,36 @@ pub fn git_sync(git_path: &PathBuf, index_path: &str, extern_url: &str) {
                 return;
             }
         }
-    } else {
-        match Command::new("git")
-            .arg("clone")
-            .arg("-qq")
-            .arg(index_path)
-            .arg(&git_path)
-            .current_dir(git_path)
-            .stderr(Stdio::null())
-            .stdout(Stdio::null())
-            .status() {
-            Ok(s) => {
+    };
+    if let Some(status) = status {
+        if status.success() {
+            let mut config_path = git_path.clone();
+            config_path.push("config.json");
+            if let Ok(mut f) = File::create(config_path) {
+                let config = format!(r#"{{
+                    "dl": "{0}/api/v1/crates",
+                    "api": "{0}/"
+                }}"#, extern_url);
+                let _ = f.write(&config.as_bytes());
                 Command::new("git")
-                    .arg("config")
-                    .arg("commit.gpgsign")
-                    .arg("false")
+                    .arg("commit")
+                    .arg("-q")
+                    .arg("-a")
+                    .arg("-m 'Updating config.json'")
+                    .arg("--no-gpg-sign")
                     .stderr(Stdio::null())
                     .stdout(Stdio::null())
                     .current_dir(git_path)
                     .status()
                     .unwrap();
-                Some(s)
+                let mut export = git_path.clone();
+                export.push(".git");
+                export.push("git-daemon-export-ok");
+                let _ = File::create(export);
+                trace!("Successfully synced");
+            } else {
+                warn!("\tHad a problem modifying the config.json")
             }
-            Err(_) => return,
-        }
-    };
-    let mut config_path = git_path.clone();
-    config_path.push("config.json");
-    if let Ok(mut f) = File::create(config_path) {
-        let config = format!("{{
-  \"dl\": \"{0}/api/v1/crates\",
-  \"api\": \"{0}/\"
-}}
-",
-                             extern_url);
-        let _ = f.write(&config.as_bytes());
-        Command::new("git")
-            .arg("commit")
-            .arg("-q")
-            .arg("-a")
-            .arg("-m 'Updating config.json'")
-            .arg("--no-gpg-sign")
-            .stderr(Stdio::null())
-            .stdout(Stdio::null())
-            .current_dir(git_path)
-            .status()
-            .unwrap();
-        let mut export = git_path.clone();
-        export.push(".git");
-        export.push("git-daemon-export-ok");
-        let _ = File::create(export);
-    } else {
-        warn!("\tHad a problem modifying the config.json")
-    }
-    if let Some(status) = status {
-        if status.success() {
-            trace!("Successfully synced");
             return;
         } else {
             warn!("Command was not a success");
