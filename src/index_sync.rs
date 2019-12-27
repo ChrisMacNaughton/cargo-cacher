@@ -3,28 +3,27 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread::{self, sleep};
-use std::time::Duration;
 
 use super::Config;
 use crates::fetch_all;
 
 pub fn init_sync(git_path: PathBuf, config: &Config) {
     let config = config.clone();
-    let interval = Duration::from_secs(config.refresh_rate);
-    git_sync(&git_path, &config.index, config.port);
+    git_sync(&git_path, &config.index, &config.extern_url);
     thread::spawn(move || loop {
-        sleep(interval);
-        git_sync(&git_path, &config.index, config.port);
+        sleep(config.refresh_interval);
+        git_sync(&git_path, &config.index, &config.extern_url);
         if config.all {
             fetch_all(&config);
         }
     });
 }
 
-pub fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
-    debug!("Syncing git repo at {} with {}",
+pub fn git_sync(git_path: &PathBuf, index_path: &str, extern_url: &str) {
+    debug!("Syncing git repo at {} with {}, setting API url to {}",
            git_path.to_str().unwrap(),
-           index_path);
+           index_path,
+           extern_url);
     let mut repo_path = git_path.clone();
     repo_path.push(".git");
     debug!("Repo path is {:?}", repo_path);
@@ -72,11 +71,11 @@ pub fn git_sync(git_path: &PathBuf, index_path: &String, port: u16) {
     config_path.push("config.json");
     if let Ok(mut f) = File::create(config_path) {
         let config = format!("{{
-  \"dl\": \"http://localhost:{0}/api/v1/crates\",
-  \"api\": \"http://localhost:{0}/\"
+  \"dl\": \"{0}/api/v1/crates\",
+  \"api\": \"{0}/\"
 }}
 ",
-                             port);
+                             extern_url);
         let _ = f.write(&config.as_bytes());
         Command::new("git")
             .arg("commit")
