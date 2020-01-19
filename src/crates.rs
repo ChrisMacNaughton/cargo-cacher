@@ -1,11 +1,14 @@
+use std::env;
 use std::fs::{self, File};
 // use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::thread;
 
+use cargo::core::Workspace;
+use cargo::Config as CargoConfig;
 use scoped_threadpool::Pool;
 use serde_json;
 use walkdir::WalkDir;
@@ -77,6 +80,12 @@ pub fn pre_fetch(config: &Config) {
     let config = config.clone();
     if let Some(_) = config.prefetch_path {
         let prefetch_path = config.prefetch_path.clone().unwrap();
+        let prefetch_parts: Vec<&str> = prefetch_path.split(".").collect();
+        let prefetch_ext = prefetch_parts[prefetch_parts.len() - 1];
+        if prefetch_ext.eq("lock") {
+            fetch_lock(&config);
+            return;
+        }
         thread::spawn(move || {
             debug!("Prefetching file at {}!", prefetch_path);
             if let Ok(f) = File::open(prefetch_path) {
@@ -141,4 +150,29 @@ pub fn fetch_all(config: &Config) {
 
         debug!("Finished background fetch all");
     });
+}
+
+fn fetch_lock(config: &Config) {
+    let cargo_config = CargoConfig::default().unwrap();
+    let lockfile = match config.prefetch_path{
+        Some(ref file) => file,
+        None => return,
+    };
+    let lockfile = Path::new(lockfile);
+    let manifest = lockfile.parent().unwrap().join("Cargo.toml");
+    let manifest = env::current_dir().unwrap().join(&manifest);
+    let ws = Workspace::new(&manifest, &cargo_config)
+        .expect("Cannot find Cargo.toml");
+
+    let (_, resolve) =
+        cargo::ops::resolve_ws(&ws).expect("failed to load pkg lockfile");
+
+    for id in resolve.iter() {
+        let name = id.name().as_str();
+        let version = id.version();
+        let version = format!("{}.{}.{}", version.major, version.minor,
+                              version.patch);
+        trace!("Resolved package: {} v{}", name, version);
+        try_fetch(config, name, &version);
+    }
 }
