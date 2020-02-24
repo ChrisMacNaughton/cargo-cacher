@@ -169,9 +169,7 @@ fn fetch_lock(config: &Config) {
 
     for id in resolve.iter() {
         let name = id.name().as_str();
-        let version = id.version();
-        let version = format!("{}.{}.{}", version.major, version.minor,
-                              version.patch);
+        let version = id.version().to_string();
         trace!("Resolved package: {} v{}", name, version);
         try_fetch(config, name, &version);
     }
