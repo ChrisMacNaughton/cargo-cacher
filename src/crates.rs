@@ -83,7 +83,7 @@ pub fn pre_fetch(config: &Config) {
         let prefetch_parts: Vec<&str> = prefetch_path.split(".").collect();
         let prefetch_ext = prefetch_parts[prefetch_parts.len() - 1];
         if prefetch_ext.eq("lock") {
-            fetch_lock(&config);
+            thread::spawn(move || fetch_lock(&config));
             return;
         }
         thread::spawn(move || {
