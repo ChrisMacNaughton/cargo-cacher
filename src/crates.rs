@@ -154,18 +154,16 @@ pub fn fetch_all(config: &Config) {
 
 fn fetch_lock(config: &Config) {
     let cargo_config = CargoConfig::default().unwrap();
-    let lockfile = match config.prefetch_path{
+    let lockfile = match config.prefetch_path {
         Some(ref file) => file,
         None => return,
     };
     let lockfile = Path::new(lockfile);
     let manifest = lockfile.parent().unwrap().join("Cargo.toml");
     let manifest = env::current_dir().unwrap().join(&manifest);
-    let ws = Workspace::new(&manifest, &cargo_config)
-        .expect("Cannot find Cargo.toml");
+    let ws = Workspace::new(&manifest, &cargo_config).expect("Cannot find Cargo.toml");
 
-    let (_, resolve) =
-        cargo::ops::resolve_ws(&ws).expect("failed to load pkg lockfile");
+    let (_, resolve) = cargo::ops::resolve_ws(&ws).expect("failed to load pkg lockfile");
 
     for id in resolve.iter() {
         let name = id.name().as_str();
