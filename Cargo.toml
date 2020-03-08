@@ -8,7 +8,7 @@ homepage = "https://github.com/ChrisMacNaughton/cargo-cacher"
 repository = "https://github.com/ChrisMacNaughton/cargo-cacher.git"
 
 [dependencies]
-cargo = "0.36.0"
+cargo-lock = "4.0"
 clap = "2.33.0"
 iron = "0.6.1"
 log = "0.4.8"

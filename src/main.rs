@@ -1,4 +1,4 @@
-extern crate cargo;
+extern crate cargo_lock;
 #[macro_use]
 extern crate clap;
 extern crate iron;
