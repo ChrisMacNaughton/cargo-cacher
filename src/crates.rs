@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::fs::{self, File};
 // use std::fs::File;
 use std::io;
@@ -78,8 +79,8 @@ pub fn pre_fetch(config: &Config) {
     let config = config.clone();
     if let Some(_) = config.prefetch_path {
         let prefetch_path = config.prefetch_path.clone().unwrap();
-        let prefetch_ext = Path::new(&prefetch_path).extension().unwrap();
-        if prefetch_ext.eq("lock") {
+        let prefetch_ext = Path::new(&prefetch_path).extension();
+        if prefetch_ext == Some(OsStr::new("lock")) {
             thread::spawn(move || fetch_lock(&config));
             return;
         }
