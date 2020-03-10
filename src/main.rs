@@ -1,3 +1,4 @@
+extern crate cargo_lock;
 #[macro_use]
 extern crate clap;
 extern crate iron;
@@ -139,7 +140,7 @@ impl Config {
                     .short("f")
                     .takes_value(true)
                     .required(false)
-                    .help("Path with a list of crate_name=version to pre-fetch"),
+                    .help("Path with a list of crate_name=version OR lock file to pre-fetch"),
             )
             .arg(
                 Arg::with_name("threads")

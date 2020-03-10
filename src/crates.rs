@@ -1,11 +1,13 @@
+use std::ffi::OsStr;
 use std::fs::{self, File};
 // use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::thread;
 
+use cargo_lock::Lockfile;
 use scoped_threadpool::Pool;
 use serde_json;
 use walkdir::WalkDir;
@@ -77,6 +79,11 @@ pub fn pre_fetch(config: &Config) {
     let config = config.clone();
     if let Some(_) = config.prefetch_path {
         let prefetch_path = config.prefetch_path.clone().unwrap();
+        let prefetch_ext = Path::new(&prefetch_path).extension();
+        if prefetch_ext == Some(OsStr::new("lock")) {
+            thread::spawn(move || fetch_lock(&config));
+            return;
+        }
         thread::spawn(move || {
             debug!("Prefetching file at {}!", prefetch_path);
             if let Ok(f) = File::open(prefetch_path) {
@@ -141,4 +148,16 @@ pub fn fetch_all(config: &Config) {
 
         debug!("Finished background fetch all");
     });
+}
+
+fn fetch_lock(config: &Config) {
+    let prefetch_path = config.prefetch_path.clone().unwrap();
+    let lockfile = Lockfile::load(prefetch_path).unwrap();
+
+    for package in lockfile.packages {
+        let name = package.name.as_str();
+        let version = package.version.to_string();
+        trace!("Resolved package: {} v{}", name, version);
+        try_fetch(config, name, &version);
+    }
 }
