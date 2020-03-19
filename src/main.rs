@@ -145,7 +145,7 @@ impl Config {
             .arg(
                 Arg::with_name("threads")
                     .short("t")
-                    .help("How many threads to use to fetch crates in the background")
+                    .help("How many threads to use to fetch crates in the background (Default: 16)")
                     .takes_value(true),
             )
             .arg(
