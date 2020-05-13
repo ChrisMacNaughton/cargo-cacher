@@ -59,6 +59,12 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
         Ok(s) => s,
         Err(_) => return Ok(Response::with((status::InternalServerError, "Failed to run git"))),
     };
+    match p.wait() {
+        Ok(s) => if ! s.success() {
+                return Ok(Response::with((status::InternalServerError, "git exited unsuccessfully")))
+            },
+        _ => return Ok(Response::with((status::InternalServerError, "Failed to run git"))),
+    };
 
     let _ = io::copy(&mut req.body, &mut p.stdin.take().unwrap());
 
