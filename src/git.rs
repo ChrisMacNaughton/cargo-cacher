@@ -59,21 +59,19 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
         Ok(s) => s,
         Err(_) => return Ok(Response::with((status::InternalServerError, "Failed to run git"))),
     };
-    match p.wait() {
-        Ok(s) => if ! s.success() {
-                return Ok(Response::with((status::InternalServerError, "git exited unsuccessfully")))
-            },
-        _ => return Ok(Response::with((status::InternalServerError, "Failed to run git"))),
-    };
-
     let _ = io::copy(&mut req.body, &mut p.stdin.take().unwrap());
-
     // Parse the headers coming out, and the pass through the rest of the
     // process back down the stack.
     //
     // Note that we have to be careful to not drop the process which will wait
     // for the process to exit (and we haven't read stdout)
-    let mut rdr = io::BufReader::new(p.stdout.take().unwrap());
+
+    let out = match p.wait_with_output() {
+        Ok(s) => s,
+        _ => return Ok(Response::with((status::InternalServerError, "Failed to run git"))),
+    };
+    // debug!("Out: {}", String::from_utf8_lossy(out));
+    let mut rdr = io::BufReader::new(io::Cursor::new(out.stdout));
 
     let mut headers = HashMap::new();
     for line in rdr.by_ref().lines() {
@@ -93,6 +91,7 @@ pub fn git(req: &mut Request, config: &Config) -> IronResult<Response> {
             .or_insert(Vec::new())
             .push(value.to_string());
     }
+
 
     // let mut buf = Vec::new();
     // let _ = rdr.read_to_end(&mut buf);
