@@ -1,5 +1,5 @@
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread::{self, sleep};
@@ -20,10 +20,12 @@ pub fn init_sync(git_path: PathBuf, config: &Config) {
 }
 
 pub fn git_sync(git_path: &PathBuf, index_path: &str, extern_url: &str) {
-    debug!("Syncing git repo at {} with {}, setting API url to {}",
-           git_path.to_str().unwrap(),
-           index_path,
-           extern_url);
+    debug!(
+        "Syncing git repo at {} with {}, setting API url to {}",
+        git_path.to_str().unwrap(),
+        index_path,
+        extern_url
+    );
     let mut repo_path = git_path.clone();
     repo_path.push(".git");
     debug!("Repo path is {:?}", repo_path);
@@ -32,10 +34,10 @@ pub fn git_sync(git_path: &PathBuf, index_path: &str, extern_url: &str) {
             .arg("pull")
             .arg("-q")
             .arg("--rebase")
-            .stderr(Stdio::null())
             .stdout(Stdio::null())
             .current_dir(git_path)
-            .status() {
+            .status()
+        {
             Ok(s) => Some(s),
             Err(e) => {
                 warn!("Error pulling: {:?}", e);
@@ -51,13 +53,31 @@ pub fn git_sync(git_path: &PathBuf, index_path: &str, extern_url: &str) {
             .current_dir(git_path)
             .stderr(Stdio::null())
             .stdout(Stdio::null())
-            .status() {
+            .status()
+        {
             Ok(s) => {
                 Command::new("git")
                     .arg("config")
                     .arg("commit.gpgsign")
                     .arg("false")
-                    .stderr(Stdio::null())
+                    .stdout(Stdio::null())
+                    .current_dir(git_path)
+                    .status()
+                    .unwrap();
+                // Set git user's name
+                Command::new("git")
+                    .arg("config")
+                    .arg("user.name")
+                    .arg("Cargo Cacher")
+                    .stdout(Stdio::null())
+                    .current_dir(git_path)
+                    .status()
+                    .unwrap();
+                //set git user's email
+                Command::new("git")
+                    .arg("config")
+                    .arg("user.email")
+                    .arg("cargo-cacher@localhost")
                     .stdout(Stdio::null())
                     .current_dir(git_path)
                     .status()
@@ -70,12 +90,14 @@ pub fn git_sync(git_path: &PathBuf, index_path: &str, extern_url: &str) {
     let mut config_path = git_path.clone();
     config_path.push("config.json");
     if let Ok(mut f) = File::create(config_path) {
-        let config = format!("{{
+        let config = format!(
+            "{{
   \"dl\": \"{0}/api/v1/crates\",
   \"api\": \"{0}/\"
 }}
 ",
-                             extern_url);
+            extern_url
+        );
         let _ = f.write(&config.as_bytes());
         Command::new("git")
             .arg("commit")
@@ -83,7 +105,6 @@ pub fn git_sync(git_path: &PathBuf, index_path: &str, extern_url: &str) {
             .arg("-a")
             .arg("-m 'Updating config.json'")
             .arg("--no-gpg-sign")
-            .stderr(Stdio::null())
             .stdout(Stdio::null())
             .current_dir(git_path)
             .status()

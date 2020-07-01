@@ -97,7 +97,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cargo-cacher"
-version = "1.2.2"
+version = "1.2.3"
 dependencies = [
  "cargo-lock 4.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
