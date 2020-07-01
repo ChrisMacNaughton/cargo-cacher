@@ -64,6 +64,24 @@ pub fn git_sync(git_path: &PathBuf, index_path: &str, extern_url: &str) {
                     .current_dir(git_path)
                     .status()
                     .unwrap();
+                // Set git user's name
+                Command::new("git")
+                    .arg("config")
+                    .arg("user.name")
+                    .arg("Cargo Cacher")
+                    .stdout(Stdio::null())
+                    .current_dir(git_path)
+                    .status()
+                    .unwrap();
+                //set git user's email
+                Command::new("git")
+                    .arg("config")
+                    .arg("user.email")
+                    .arg("cargo-cacher@localhost")
+                    .stdout(Stdio::null())
+                    .current_dir(git_path)
+                    .status()
+                    .unwrap();
                 Some(s)
             }
             Err(_) => return,
